@@ -1,0 +1,111 @@
+%% Project Part 1 %%%%
+%
+%  Author: Caitlin Flowers
+%  email: cflowers7@gatech.edu
+%  
+%%  Constants %%%%
+
+st = .01;       %step value for eulers
+t = 0:st:100;   %array for time (ms)
+
+% Conductance values mS/cm^2
+gK = 36;
+gNa = 120;
+gL = .3;
+
+% Ion potentials and resting membrane potential in mV
+eK = -12;
+eNa = 115;
+eL = 10.6;
+vRest = 0;               %subtract 70 mV at the end
+
+%% Initial Values %%%%
+
+% Gating Variables 
+aM0 = .1*((25-vRest)/(exp((25-vRest)/10)-1));
+bM0 = 4*exp(-vRest/18);
+aN0 = .01*((10-vRest)/(exp((10-vRest)/10)-1));
+bN0 = .125*exp(-vRest/80);
+aH0 = .07*exp(-vRest/20);
+bH0 = 1/(exp((30-vRest)/10)+1);
+
+m0 = aM0/(aM0+bM0);
+n0 = aN0/(aN0+bN0);
+h0 = aH0/(aH0+bH0);
+
+% Currents
+conK = ((n0)^4)*gK;
+conNa = ((m0)^3)*gNa*h0;
+iK = conK*(vRest-eK);
+iNa = conNa*(vRest-eNa);
+iL = gL*(vRest-eL);
+Iion_init = 0-iK-iNa-iL;
+
+% Conductances (no injection)
+
+
+
+%% Simulator function %%%%
+% Takes input of the injection current value and duration and outputs data
+% arrays for Vm, gK, and gNa. 
+
+% Initialize arrays for membrane voltages and conductances
+
+V_Mem = zeros(size(t));
+CondK = zeros(size(t));
+CondNa = zeros(size(t));
+V_Mem(1) = vRest;
+CondK(1) = conK;
+CondNa(1) = conNa;
+
+M = zeros(size(t));
+M(1) = m0;
+N = zeros(size(t));
+N(1) = n0;
+H = zeros(size(t));
+H(1) = h0;
+
+%create array for injection current
+I_inj = zeros(size(t));
+I_inj(:) = 5;             %mA
+
+for j = 1:length(t)-1
+    v = V_Mem(j);
+    m = M(j);
+    n = N(j);
+    h = H(j);
+    aM = .1*((25-v)/(exp((25-v)/10)-1));
+    bM = 4*exp(-v/18);
+    aN = .01*((10-v)/(exp((10-v)/10)-1));
+    bN = .125*exp(-v/80);
+    aH = .07*exp(-v/20);
+    bH = 1/(exp((30-v)/10)+1);
+    M(j+1) = m + st*((aM*(1-m)-bM*m));
+    N(j+1) = n + st*((aN*(1-n)-bN*n));
+    H(j+1) = h + st*((aH*(1-h)-bH*h));
+    
+    %recalculate currents
+    iNa = (m^3)*gNa*h*(v-eNa);
+    iK = (n^4)*gK*(v-eK);
+    iL = gL*(v-eL);
+    iIon = I_inj(j) - iK - iNa - iL;
+    %Update Membrane voltage
+    V_Mem(j+1) = v + st*(iIon);
+    CondK(j) = ((n^4)*gK);
+    CondNa(j) = (m^3)*gNa*h;
+end
+
+V_Mem(1, :) = V_Mem(1,:) - 70;
+
+figure
+plot(t, V_Mem)
+title('Membrane Potential')
+xlabel('Time (ms) ');
+ylabel('Membrane Potential (mV)')
+axis([0, 100, -90, 40])
+
+figure
+plot(t, CondK, t, CondNa, 'R');
+title('Conductance Values (K and Na)')
+xlabel( 'Time (ms) ')
+ylabel( 'Conductance (mS/cm^2) ')
